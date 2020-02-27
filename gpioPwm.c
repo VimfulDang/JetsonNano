@@ -103,10 +103,6 @@ int main(void)
 	
 	while((update = getchar()) != 'q')
 	{
-		if (update == 'q')
-		{
-			break;
-		}
 		duty = ((i%10) * 25) << 16;
 		printf("Duty Cycle: %d%%\t%#x\n", (10 * (duty >> 16) / 25), duty); //Duty from 0 to 98%
 		printf("%p\t%#x\n", pwmBase, *pwmBase);
