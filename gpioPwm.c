@@ -11,7 +11,7 @@
 #define PWMCLK0		0x110
 
 /* 
-	GPIO Controller has 4 ports, {A, B, C, D} 
+	Each GPIO Controller has 4 ports, {A, B, C, D} 
 	with the following configuration
 */
 
@@ -19,9 +19,9 @@ typedef struct {
 	unsigned int CNF[4];		//0 for GPIO, 1 for SFIO
 	unsigned int OE[4];
 	unsigned int OUT[4];
-	unsigned int IN[4];		//Input Value (read only)
-	unsigned int INTSTA[4];	//interrupt status
-	unsigned int INTENB[4];	//interrupt enable
+	unsigned int IN[4];			//Input Value (read only)
+	unsigned int INTSTA[4];		//interrupt status
+	unsigned int INTENB[4];		//interrupt enable
 	unsigned int INTSEL[4]; 	//Edge or Level
 	unsigned int INTCLR[4];
 } gpioCtrl;
@@ -35,7 +35,9 @@ int main(void)
 		exit(1);
 	}
 	
-	
+	/* 
+		Export GPIO 12 for Input and GPIO 13 for output
+	*/
 	int fdgpio = open("/sys/class/gpio/export", O_WRONLY);
 	if(fdgpio == -1)
 	{
@@ -68,6 +70,10 @@ int main(void)
 	int pagesize = getpagesize();	//expect 0x1000
 	int pagemask = pagesize - 1;	//0x0FFF
 	
+	/* 
+		Memory Pointer offset by respective base address
+	*/ 
+
 	void * base = mmap(0, pagesize, PROT_READ | PROT_WRITE, MAP_SHARED, fdmem, (GPIO0BASE & ~pagemask));
 	if (base == NULL) {
         perror("mmap()");
@@ -87,10 +93,9 @@ int main(void)
 	   31 = Enable, 30:16 = Width (% of 256), 12:0 = PFM
 	*/
 	*pwmBase = 0x00000012;
-	gpioBase->CNF[1] = 0x30;
-	gpioBase->OE[1] = 0x20;
-	gpioBase->OUT[1] = 0x20;
-	printf("here\n");
+	gpioBase->CNF[1] = 0x30;	//Set GPIO 12 & 13 Active
+	gpioBase->OE[1] = 0x20;		//13 as output Enable & High
+	gpioBase->OUT[1] = 0x20;	
 	int i = 1;
 	int duty = 0;
 	unsigned int gpioInput = 0;
@@ -103,13 +108,13 @@ int main(void)
 			break;
 		}
 		duty = ((i%10) * 25) << 16;
-		printf("Duty Cycle: %d%%\t%#x\n", (10 * (duty >> 16) / 25), duty);
+		printf("Duty Cycle: %d%%\t%#x\n", (10 * (duty >> 16) / 25), duty); //Duty from 0 to 98%
 		printf("%p\t%#x\n", pwmBase, *pwmBase);
 		gpioInput = gpioBase->IN[1];
 		printf("%#x\t%d\n", gpioInput, gpioInput & 0x10);
 		if(gpioInput)
 		{
-			*pwmBase &= 0x80000012;
+			*pwmBase &= 0x80000012;			//Read & Write
     		*pwmBase = 0x80000012 | duty;
 		}
 		i++;
@@ -122,33 +127,11 @@ int main(void)
 	gpioBase->OUT[1] = 0x0;	
 	munmap(base, pagesize);
 	munmap(basepwm, pagesize);
-	
 	close(fdmem);
-	
-
-	/*
 	fdgpio = open("/sys/class/gpio/unexport", O_WRONLY);
 	write(fdgpio, "12", 2);
 	write(fdgpio, "13", 2);
 	close(fdgpio);
-	*/
+	
 	return 0;
 }
-	
-	
-	
-	
-
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
